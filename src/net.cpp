@@ -1257,13 +1257,19 @@ document.querySelectorAll('.logo-svg path,.logo-svg rect').forEach(function(el){
                 
                 html += "<label>";
                 html += TR("Palette:", "Palete:");
-                html += "</label><select name=\"rssPal\" style=\"padding:6px\">";
+                html += "</label><select name=\"rssPal\" style=\"padding:6px\" onchange=\"document.getElementById('rssColWrap').style.display=this.value=='" + String(RSS_PALETTE_SOLID) + "'?'flex':'none'\">";
                 for (uint8_t i = 0; i < PALETTE_COUNT; ++i) {
                     html += "<option value=\"" + String(i) + "\"";
                     if (cfg.rssPalette == i) html += " selected";
                     html += ">" + String(settings_palette_name(i)) + "</option>";
                 }
+                html += "<option value=\"" + String(RSS_PALETTE_SOLID) + "\"";
+                if (cfg.rssPalette == RSS_PALETTE_SOLID) html += " selected";
+                html += ">" + String(TR("Solid", "Vienkrāsains")) + "</option>";
                 html += "</select>";
+                html += "<label id=\"rssColWrap\" style=\"display:" + String(cfg.rssPalette == RSS_PALETTE_SOLID ? "flex" : "none") + ";align-items:center;gap:8px\">";
+                html += TR("Color:", "Krāsa:");
+                html += "<input type=\"color\" name=\"rssCol\" value=\"" + colorHex(cfg.rssColor) + "\" style=\"width:54px;height:36px;padding:0;border:2px solid #000\"></label>";
                 
                 html += "<label>";
                 html += TR("Items:", "Vienības:");
@@ -3157,7 +3163,11 @@ static void handleSettingsPost()
     }
     if (server.hasArg("rssPal")) {
         cfg.rssPalette = (uint8_t)server.arg("rssPal").toInt();
-        if (cfg.rssPalette >= PALETTE_COUNT) cfg.rssPalette = 0;
+        if (cfg.rssPalette > RSS_PALETTE_SOLID) cfg.rssPalette = 0;
+    }
+    if (server.hasArg("rssCol")) {
+        uint32_t c;
+        if (parseHexColor(server.arg("rssCol"), &c)) cfg.rssColor = c;
     }
     if (server.hasArg("rssCnt")) {
         uint8_t cnt = (uint8_t)server.arg("rssCnt").toInt();
@@ -3657,7 +3667,11 @@ static void handleCardsConfigPost()
     }
     if (server.hasArg("rssPal")) {
         cfg.rssPalette = (uint8_t)server.arg("rssPal").toInt();
-        if (cfg.rssPalette >= PALETTE_COUNT) cfg.rssPalette = 0;
+        if (cfg.rssPalette > RSS_PALETTE_SOLID) cfg.rssPalette = 0;
+    }
+    if (server.hasArg("rssCol")) {
+        uint32_t c;
+        if (parseHexColor(server.arg("rssCol"), &c)) cfg.rssColor = c;
     }
     if (server.hasArg("rssCnt")) {
         uint8_t cnt = (uint8_t)server.arg("rssCnt").toInt();
