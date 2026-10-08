@@ -10889,6 +10889,7 @@ static int16_t g_rssScrollX = 20;
 static uint32_t g_rssLastScroll = 0;
 static bool g_rssValid = false;
 static volatile bool g_rssFetchInFlight = false;
+static volatile bool g_rssRefreshPending = false;
 
 // Extended 4x7 font for Latvian characters (ĀČĒĢĪĶĻŅŠŪŽ)
 static const uint8_t FONT_EXT[][7] = {
@@ -11230,13 +11231,14 @@ static void rss_update(uint32_t now, uint32_t dt) {
         return;
     }
 
-    if (now - g_rssLastFetch > (uint32_t)cfg.rssUpdateMins * 60000 || g_rssLastFetch == 0) {
+    if (g_rssRefreshPending || now - g_rssLastFetch > (uint32_t)cfg.rssUpdateMins * 60000 || g_rssLastFetch == 0) {
         if (!g_rssFetchInFlight) {
             g_rssFetchInFlight = true;
             if (!http_worker_enqueue(rss_fetch_job, nullptr)) {
                 g_rssFetchInFlight = false;
                 return;
             }
+            g_rssRefreshPending = false;
             g_rssLastFetch = now;
         }
     }
@@ -11255,6 +11257,10 @@ static void rss_update(uint32_t now, uint32_t dt) {
         }
         g_rssLastScroll = now;
     }
+}
+
+void cards_rss_refresh() {
+    g_rssRefreshPending = true;
 }
 
 static void rss_render() {

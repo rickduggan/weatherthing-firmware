@@ -1499,16 +1499,16 @@ function toggleCollapse(btn) {
     uint8_t maxBright = cfg.highPowerMode ? 255 : 127;
     html += "<div class=\"form-group\"><label>";
     html += TR("Manual Brightness", "Manu\u0101ls spilgtums");
-    html += " (" + String(cfg.brightManual) + ")</label>";
-    html += "<input type=\"range\" name=\"brightManual\" min=\"5\" max=\"" + String(maxBright) + "\" value=\"" + String(cfg.brightManual) + "\"></div>";
+    html += " (<span>" + String(cfg.brightManual) + "</span>)</label>";
+    html += "<input type=\"range\" name=\"brightManual\" oninput=\"this.previousElementSibling.lastElementChild.textContent=this.value\" min=\"5\" max=\"" + String(maxBright) + "\" value=\"" + String(cfg.brightManual) + "\"></div>";
     html += "<div class=\"form-group\"><label>";
     html += TR("Auto Min (dark room)", "Autom\u0101tiskais min (tum\u0161a istaba)");
-    html += ": " + String(cfg.brightMin) + "</label>";
-    html += "<input type=\"range\" name=\"brightMin\" min=\"1\" max=\"40\" value=\"" + String(cfg.brightMin) + "\"></div>";
+    html += ": <span>" + String(cfg.brightMin) + "</span></label>";
+    html += "<input type=\"range\" name=\"brightMin\" oninput=\"this.previousElementSibling.lastElementChild.textContent=this.value\" min=\"1\" max=\"40\" value=\"" + String(cfg.brightMin) + "\"></div>";
     html += "<div class=\"form-group\"><label>";
     html += TR("Auto Max (bright room)", "Autom\u0101tiskais maks (gai\u0161a istaba)");
-    html += ": " + String(cfg.brightMax) + "</label>";
-    html += "<input type=\"range\" name=\"brightMax\" min=\"20\" max=\"" + String(maxBright) + "\" value=\"" + String(cfg.brightMax) + "\"></div>";
+    html += ": <span>" + String(cfg.brightMax) + "</span></label>";
+    html += "<input type=\"range\" name=\"brightMax\" oninput=\"this.previousElementSibling.lastElementChild.textContent=this.value\" min=\"20\" max=\"" + String(maxBright) + "\" value=\"" + String(cfg.brightMax) + "\"></div>";
     html += "<div class=\"form-group\"><label>";
     html += TR("Dark reference (ADC)", "Tum\u0161uma atsauce (ADC)");
     html += ": <span id='bCalDVal'>" + String(cfg.brightCalDark) + "</span></label>";
@@ -2994,16 +2994,13 @@ static void handleSettingsPost()
     if (server.hasArg("beatThr")) cfg.beatThreshold = (uint8_t)server.arg("beatThr").toInt();
     if (server.hasArg("beatHld")) cfg.beatHold = (uint8_t)server.arg("beatHld").toInt();
     
-    // Checkbox settings (true if present in form)
-    cfg.vuInvert = server.hasArg("micInvert");
-    cfg.agcEnabled = server.hasArg("agcOn");
+    // micInvert/agcOn/wxAudHue/wxAudSpd checkboxes live in the /cards_config form;
+    // resetting them here would clear them on every Brightness save.
 
     if (server.hasArg("tempPalette")) {
         cfg.tempPalette = (uint8_t)server.arg("tempPalette").toInt();
         if (cfg.tempPalette > 2) cfg.tempPalette = 0;
     }
-    cfg.wxAudioHue = server.hasArg("wxAudHue");
-    cfg.wxAudioSpeed = server.hasArg("wxAudSpd");
     
     if (server.hasArg("simTimeout")) {
         cfg.simTimeoutSecs = (uint16_t)server.arg("simTimeout").toInt();
@@ -3140,6 +3137,9 @@ static void handleSettingsPost()
     cfg.mqttEnabled = (cfg.mqttServer[0] != '\0');
     
     // RSS settings
+    String prevRssUrl = cfg.rssUrl;
+    uint8_t prevRssCnt = cfg.rssItemCount;
+    uint8_t prevRssFmt = cfg.rssFormat;
     if (server.hasArg("rssUrl")) {
         String url = server.arg("rssUrl");
         url.trim();
@@ -3165,6 +3165,9 @@ static void handleSettingsPost()
     }
     if (server.hasArg("rssFmt")) {
         cfg.rssFormat = (uint8_t)server.arg("rssFmt").toInt();
+    }
+    if (prevRssUrl != cfg.rssUrl || prevRssCnt != cfg.rssItemCount || prevRssFmt != cfg.rssFormat) {
+        cards_rss_refresh();
     }
     
     // YouTube settings (only functional social media card)
@@ -3634,6 +3637,9 @@ static void handleCardsConfigPost()
     cfg.mqttEnabled = (cfg.mqttServer[0] != '\0');
     
     // 10. RSS settings
+    String prevRssUrl = cfg.rssUrl;
+    uint8_t prevRssCnt = cfg.rssItemCount;
+    uint8_t prevRssFmt = cfg.rssFormat;
     if (server.hasArg("rssUrl")) {
         String url = server.arg("rssUrl");
         url.trim();
@@ -3649,7 +3655,21 @@ static void handleCardsConfigPost()
         if (cfg.rssSpeed < 1) cfg.rssSpeed = 1;
         if (cfg.rssSpeed > 10) cfg.rssSpeed = 10;
     }
-    
+    if (server.hasArg("rssPal")) {
+        cfg.rssPalette = (uint8_t)server.arg("rssPal").toInt();
+        if (cfg.rssPalette >= PALETTE_COUNT) cfg.rssPalette = 0;
+    }
+    if (server.hasArg("rssCnt")) {
+        uint8_t cnt = (uint8_t)server.arg("rssCnt").toInt();
+        if (cnt >= 1 && cnt <= 10) cfg.rssItemCount = cnt;
+    }
+    if (server.hasArg("rssFmt")) {
+        cfg.rssFormat = (uint8_t)server.arg("rssFmt").toInt();
+    }
+    if (prevRssUrl != cfg.rssUrl || prevRssCnt != cfg.rssItemCount || prevRssFmt != cfg.rssFormat) {
+        cards_rss_refresh();
+    }
+
     // 11. YouTube settings
     if (server.hasArg("ytChan")) {
         String ch = server.arg("ytChan");
