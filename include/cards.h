@@ -12,3 +12,6 @@ void cards_set_preset(uint8_t preset);  // For weather/VU presets
 uint8_t cards_get_current();
 uint8_t cards_get_preset();
 uint8_t cards_get_count();
+
+// Refetch the RSS feed on the next frame (after URL/count/format changes)
+void cards_rss_refresh();
