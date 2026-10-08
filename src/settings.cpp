@@ -187,6 +187,7 @@ void settings_begin()
     // RSS defaults
     g_settings.rssUrl[0] = '\0';
     g_settings.rssPalette = 0;
+    g_settings.rssColor = wt_color(255, 255, 255);
     g_settings.rssSpeed = 5;
     g_settings.rssUpdateMins = 15;
     g_settings.rssItemCount = 3;     // Default 3 items
@@ -322,6 +323,7 @@ void settings_begin()
         g_settings.rssUrl[sizeof(g_settings.rssUrl) - 1] = '\0';
         
         g_settings.rssPalette = g_prefs.getUChar("rssPal", 0);
+        g_settings.rssColor = g_prefs.getUInt("rssCol", wt_color(255, 255, 255));
         g_settings.rssSpeed = g_prefs.getUChar("rssSpd", 5);
         g_settings.rssUpdateMins = g_prefs.getUChar("rssMins", 15);
         g_settings.rssItemCount = g_prefs.getUChar("rssCnt", 3);
@@ -422,6 +424,7 @@ void settings_begin()
     if (g_settings.rssSpeed < 1) g_settings.rssSpeed = 1;
     if (g_settings.rssSpeed > 10) g_settings.rssSpeed = 10;
     if (g_settings.vuPalette >= PALETTE_COUNT) g_settings.vuPalette = 0;
+    if (g_settings.rssPalette > RSS_PALETTE_SOLID) g_settings.rssPalette = 0;
     if (g_settings.micGain < 1) g_settings.micGain = 1;
     if (g_settings.micGain > 10) g_settings.micGain = 10;
     if (g_settings.micBoost > 10) g_settings.micBoost = 10;
@@ -557,6 +560,7 @@ void settings_save()
         // RSS settings
         g_prefs.putString("rssUrl", g_settings.rssUrl);
         g_prefs.putUChar("rssPal", g_settings.rssPalette);
+        g_prefs.putUInt("rssCol", g_settings.rssColor);
         g_prefs.putUChar("rssSpd", g_settings.rssSpeed);
         g_prefs.putUChar("rssMins", g_settings.rssUpdateMins);
         g_prefs.putUChar("rssCnt", g_settings.rssItemCount);
