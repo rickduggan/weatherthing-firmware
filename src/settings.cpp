@@ -165,6 +165,9 @@ void settings_begin()
     g_settings.brightBlanking = false; // Blanking disabled by default
     g_settings.brightBlankSecs = 30;  // 30 second blanking interval
     g_settings.highPowerMode = false; // Safe mode by default
+    g_settings.wbRed = 255;           // White balance off by default
+    g_settings.wbGreen = 255;
+    g_settings.wbBlue = 255;
     g_settings.brightCalDark = 300;   // Default ADC for dark room
     g_settings.brightCalBright = 2800; // Default ADC for bright room
     g_settings.forecastHours = 12;   // 12 hour forecast default
@@ -284,6 +287,9 @@ void settings_begin()
         g_settings.brightBlanking = g_prefs.getBool("brightBlk", false);
         g_settings.brightBlankSecs = g_prefs.getUChar("blankSec", 30);
         g_settings.highPowerMode = g_prefs.getBool("hiPower", false);
+        g_settings.wbRed = g_prefs.getUChar("wbR", 255);
+        g_settings.wbGreen = g_prefs.getUChar("wbG", 255);
+        g_settings.wbBlue = g_prefs.getUChar("wbB", 255);
         g_settings.brightCalDark = g_prefs.getUShort("bCalD", 300);
         g_settings.brightCalBright = g_prefs.getUShort("bCalB", 2800);
         g_settings.forecastHours = g_prefs.getUChar("fcstHours", 12);
@@ -535,6 +541,9 @@ void settings_save()
         g_prefs.putBool("brightBlk", g_settings.brightBlanking);
         g_prefs.putUChar("blankSec", g_settings.brightBlankSecs);
         g_prefs.putBool("hiPower", g_settings.highPowerMode);
+        g_prefs.putUChar("wbR", g_settings.wbRed);
+        g_prefs.putUChar("wbG", g_settings.wbGreen);
+        g_prefs.putUChar("wbB", g_settings.wbBlue);
         g_prefs.putUShort("bCalD", g_settings.brightCalDark);
         g_prefs.putUShort("bCalB", g_settings.brightCalBright);
         g_prefs.putUChar("fcstHours", g_settings.forecastHours);

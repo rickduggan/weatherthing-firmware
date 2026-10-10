@@ -78,6 +78,9 @@ struct Settings
     bool brightBlanking;     // Use blanking frame for light measurement
     uint8_t brightBlankSecs; // Blanking interval in seconds (10-120)
     bool highPowerMode;      // Allow brightness >127 (WARNING: heat risk, bare PCB only)
+    uint8_t wbRed;           // White balance: per-channel output scale (255 = no correction)
+    uint8_t wbGreen;
+    uint8_t wbBlue;
     uint16_t brightCalDark;  // ADC reading considered "dark room"
     uint16_t brightCalBright; // ADC reading considered "bright room"
     

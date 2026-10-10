@@ -1568,6 +1568,23 @@ const bCalBVal=document.getElementById('bCalBVal');
 if(bCalD&&bCalDVal){ bCalDVal.textContent=bCalD.value; bCalD.addEventListener('input',()=>{bCalDVal.textContent=bCalD.value;}); }
 if(bCalB&&bCalBVal){ bCalBVal.textContent=bCalB.value; bCalB.addEventListener('input',()=>{bCalBVal.textContent=bCalB.value;}); }
 </script>)";
+    html += "<p style=\"font-size:0.8em;color:#666;margin:12px 0 4px\"><b>";
+    html += TR("White balance", "Baltā balanss");
+    html += "</b> ";
+    html += TR("(255 = no change). If white looks purple, lower Red and Blue.", "(255 = bez izmaiņām). Ja baltais izskatās violets, samaziniet sarkano un zilo.");
+    html += "</p>";
+    html += "<div class=\"form-group\"><label>";
+    html += TR("Red", "Sarkans");
+    html += ": <span>" + String(cfg.wbRed) + "</span></label>";
+    html += "<input type=\"range\" name=\"wbR\" oninput=\"this.previousElementSibling.lastElementChild.textContent=this.value\" min=\"0\" max=\"255\" value=\"" + String(cfg.wbRed) + "\"></div>";
+    html += "<div class=\"form-group\"><label>";
+    html += TR("Green", "Zaļš");
+    html += ": <span>" + String(cfg.wbGreen) + "</span></label>";
+    html += "<input type=\"range\" name=\"wbG\" oninput=\"this.previousElementSibling.lastElementChild.textContent=this.value\" min=\"0\" max=\"255\" value=\"" + String(cfg.wbGreen) + "\"></div>";
+    html += "<div class=\"form-group\"><label>";
+    html += TR("Blue", "Zils");
+    html += ": <span>" + String(cfg.wbBlue) + "</span></label>";
+    html += "<input type=\"range\" name=\"wbB\" oninput=\"this.previousElementSibling.lastElementChild.textContent=this.value\" min=\"0\" max=\"255\" value=\"" + String(cfg.wbBlue) + "\"></div>";
     html += "<div class=\"form-group\" style=\"margin-top:12px;padding:10px;background:#fff3cd;border:1px solid #ffc107;border-radius:4px\">";
     html += "<label style=\"color:#856404\"><input type=\"checkbox\" name=\"highPower\" value=\"1\"";
     if (cfg.highPowerMode) html += " checked";
@@ -3088,6 +3105,9 @@ static void handleSettingsPost()
     // Blanking removed: ignore legacy args
     cfg.brightBlanking = false;
     cfg.brightBlankSecs = 30;
+    if (server.hasArg("wbR")) cfg.wbRed = (uint8_t)constrain(server.arg("wbR").toInt(), 0, 255);
+    if (server.hasArg("wbG")) cfg.wbGreen = (uint8_t)constrain(server.arg("wbG").toInt(), 0, 255);
+    if (server.hasArg("wbB")) cfg.wbBlue = (uint8_t)constrain(server.arg("wbB").toInt(), 0, 255);
     if (server.hasArg("bCalD")) {
         cfg.brightCalDark = (uint16_t)server.arg("bCalD").toInt();
     }
