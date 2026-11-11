@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <WiFiUdp.h>
 #include <math.h>
 #include <limits.h>
 #include "weatherthing_hw.h"
@@ -96,6 +97,10 @@ static void youtube_setup();
 static void youtube_update(uint32_t now, uint32_t dt);
 static void youtube_render();
 
+static void video_setup();
+static void video_update(uint32_t now, uint32_t dt);
+static void video_render();
+
 static void drawDigit(uint8_t x, uint8_t y, uint8_t d, uint32_t color);
 static uint32_t weatherColor(uint8_t type);
 static uint32_t weatherTimelineColor(uint8_t type);
@@ -141,7 +146,8 @@ static Card g_cards[] = {
     {countdown_setup, countdown_update, countdown_render},
     {pomodoro_setup, pomodoro_update, pomodoro_render},
     {sun_setup, sun_update, sun_render},
-    {stopwatch_setup, stopwatch_update, stopwatch_render}
+    {stopwatch_setup, stopwatch_update, stopwatch_render},
+    {video_setup, video_update, video_render}          // 16 (Video stream)
 };
 
 // Card indices for reference
@@ -162,6 +168,7 @@ static const uint8_t CARD_COUNTDOWN = 12;
 static const uint8_t CARD_POMODORO = 13;
 static const uint8_t CARD_SUN = 14;
 static const uint8_t CARD_STOPWATCH = 15;
+static const uint8_t CARD_VIDEO = 16;
 
 static const uint8_t g_cardCount = sizeof(g_cards) / sizeof(g_cards[0]);
 static uint8_t g_currentCard = 0;
@@ -189,13 +196,15 @@ static const char* g_cardNames[] = {
     "Count",     // 12
     "Pomo",      // 13
     "Sun",       // 14
-    "Stop"       // 15
+    "Stop",      // 15
+    "Video"      // 16
 };
 
 // Which cards are "musical" (show note icon) - VU (5), Sparkle (6), Aurora (7)
 static const bool g_cardMusical[] = {
     false, false, false, false, false, true, true, true, false, false, false,
-    false, false, false, false, false  // Social cards not musical
+    false, false, false, false, false, // Social cards not musical
+    false                              // Video
 };
 
 // Title animation state
@@ -1139,6 +1148,7 @@ static uint32_t getCardColor(uint8_t card) {
         case CARD_POMODORO:  return wt_color(255, 80, 80);
         case CARD_SUN:       return wt_color(255, 200, 40);
         case CARD_STOPWATCH: return wt_color(200, 200, 200);
+        case CARD_VIDEO:     return wt_color(255, 255, 255);
         default:           return wt_color(200, 200, 200);
     }
 }
@@ -2240,7 +2250,7 @@ void cards_loop()
         g_touchCycleLocked = cfg.touchShortcutLocksCycle;
         
         // Switch to the shortcut card
-        if (targetCard < 16 && targetCard != g_currentCard) {
+        if (targetCard < WT_CARD_SLOTS && targetCard != g_currentCard) {
             g_currentCard = targetCard;
             g_cards[g_currentCard].setup();
             startTitleAnimation(now);
@@ -11642,6 +11652,79 @@ static void youtube_render() {
     valid = g_ytValid;
     portEXIT_CRITICAL(&g_cardsMux);
     renderSocialCard(drawYouTubeIcon, subs, valid, wt_color(255, 0, 0));
+}
+
+// ============== VIDEO CARD ==============
+// Streams downscaled video from a PC/server (see tools/wt-stream.py).
+// Protocol: UDP to VIDEO_UDP_PORT, one datagram per frame, exactly
+// WT_MATRIX_WIDTH*WT_MATRIX_HEIGHT*3 bytes of RGB (row-major, y=0 at top).
+
+static const uint16_t VIDEO_UDP_PORT = 4210;
+static const uint16_t VIDEO_FRAME_BYTES = WT_MATRIX_WIDTH * WT_MATRIX_HEIGHT * 3;
+static const uint32_t VIDEO_TIMEOUT_MS = 3000;
+
+static WiFiUDP g_videoUdp;
+static bool g_videoUdpOpen = false;
+static uint8_t g_videoFrame[VIDEO_FRAME_BYTES];
+static uint8_t g_videoGamma[256];
+static bool g_videoGotFrame = false;
+static uint32_t g_videoLastFrameMs = 0;
+
+static void video_open_udp() {
+    if (g_videoUdpOpen || WiFi.status() != WL_CONNECTED) return;
+    if (g_videoUdp.begin(VIDEO_UDP_PORT)) g_videoUdpOpen = true;
+}
+
+static void video_setup() {
+    // LED-friendly gamma so dark video tones aren't washed out
+    for (int i = 0; i < 256; ++i)
+        g_videoGamma[i] = (uint8_t)(powf(i / 255.0f, 2.2f) * 255.0f + 0.5f);
+    g_videoGotFrame = false;
+    g_videoLastFrameMs = 0;
+    video_open_udp();
+    // Drop datagrams that queued up while another card was showing
+    while (g_videoUdpOpen && g_videoUdp.parsePacket() > 0) g_videoUdp.flush();
+}
+
+static void video_update(uint32_t now, uint32_t dt) {
+    (void)dt;
+    video_open_udp();
+    if (!g_videoUdpOpen) return;
+    // Keep only the newest frame; drain everything pending so we never lag behind
+    int size;
+    uint8_t buf[VIDEO_FRAME_BYTES];
+    uint8_t guard = 0;
+    while ((size = g_videoUdp.parsePacket()) > 0 && guard++ < 32) {
+        if (size == VIDEO_FRAME_BYTES &&
+            g_videoUdp.read(buf, VIDEO_FRAME_BYTES) == VIDEO_FRAME_BYTES) {
+            memcpy(g_videoFrame, buf, VIDEO_FRAME_BYTES);
+            g_videoGotFrame = true;
+            g_videoLastFrameMs = now;
+        } else {
+            g_videoUdp.flush();  // wrong size: ignore
+        }
+    }
+}
+
+static void video_render() {
+    wt_display_clear();
+    wt_timeline_clear();
+    uint32_t now = millis();
+    bool live = g_videoGotFrame && (now - g_videoLastFrameMs < VIDEO_TIMEOUT_MS);
+    if (!live) {
+        // Waiting for a stream: play icon with a pulsing dot
+        drawYouTubeIcon(0, 0);
+        uint8_t b = 50 + (now / 10) % 100;
+        wt_display_set_pixel_xy(10, 3, wt_color(b, b, b));
+        return;
+    }
+    const uint8_t* f = g_videoFrame;
+    for (uint8_t y = 0; y < WT_MATRIX_HEIGHT; ++y) {
+        for (uint8_t x = 0; x < WT_MATRIX_WIDTH; ++x) {
+            uint16_t i = ((uint16_t)y * WT_MATRIX_WIDTH + x) * 3;
+            wt_display_set_pixel_xy(x, y, wt_color(g_videoGamma[f[i]], g_videoGamma[f[i + 1]], g_videoGamma[f[i + 2]]));
+        }
+    }
 }
 
 // ============== TWITCH CARD ==============

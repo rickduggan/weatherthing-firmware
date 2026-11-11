@@ -317,9 +317,10 @@ document.querySelectorAll('.logo-svg path,.logo-svg rect').forEach(function(el){
         cfg.uiLang == 1 ? "Atskaite" : "Countdown",
         "Pomodoro",
         cfg.uiLang == 1 ? "Saule" : "Sun",
-        cfg.uiLang == 1 ? "Hronometrs" : "Stopwatch"
+        cfg.uiLang == 1 ? "Hronometrs" : "Stopwatch",
+        "Video"
     };
-    const char* cardIcons[] = {"&#x26C5;", "&#x1F551;", "&#x20BF;", "&#x1F4C8;", "&#x1F310;", "&#x1F3A4;", "", "", "&#x1F3AE;", "&#x1F3E0;", "&#x1F4F0;", "&#x25B6;", "&#x23F1;", "&#x1F345;", "&#x2600;", "&#x23F1;"};
+    const char* cardIcons[] = {"&#x26C5;", "&#x1F551;", "&#x20BF;", "&#x1F4C8;", "&#x1F310;", "&#x1F3A4;", "", "", "&#x1F3AE;", "&#x1F3E0;", "&#x1F4F0;", "&#x25B6;", "&#x23F1;", "&#x1F345;", "&#x2600;", "&#x23F1;", "&#x1F3AC;"};
     
     // ========== WiFi FIRST when in AP mode ==========
     if (g_isApMode) {
@@ -672,6 +673,7 @@ document.querySelectorAll('.logo-svg path,.logo-svg rect').forEach(function(el){
     html += "<option value=\"13_0\"" + String(cfg.touchShortcutCard == 13 ? " selected" : "") + ">Pomodoro</option>";
     html += "<option value=\"14_0\"" + String(cfg.touchShortcutCard == 14 ? " selected" : "") + ">Sunrise/Sunset</option>";
     html += "<option value=\"15_0\"" + String(cfg.touchShortcutCard == 15 ? " selected" : "") + ">Stopwatch</option>";
+    html += "<option value=\"16_0\"" + String(cfg.touchShortcutCard == 16 ? " selected" : "") + ">Video</option>";
     html += "</optgroup>";
     
     html += "</select>";
@@ -701,13 +703,13 @@ document.querySelectorAll('.logo-svg path,.logo-svg rect').forEach(function(el){
     html += "<div id=\"cardGallery\" style=\"display:flex;flex-direction:column;gap:15px\">";
     
     // Generate cards in order (skip Sparkle=6, Aurora=7 as VU-only)
-    uint16_t seenCards = 0; // Bitmask to track which cards we've already shown
-    for(int i=0; i<16; ++i) {
+    uint32_t seenCards = 0; // Bitmask to track which cards we've already shown
+    for(int i=0; i<WT_CARD_SLOTS; ++i) {
         uint8_t cardIdx = cfg.cardOrder[i];
-        if(cardIdx > 15) continue; // Skip invalid entries
+        if(cardIdx >= WT_CARD_SLOTS) continue; // Skip invalid entries
         if(cardIdx == 6 || cardIdx == 7) continue; // Skip Sparkle/Aurora (VU-only)
-        if(seenCards & (1 << cardIdx)) continue; // Skip duplicates
-        seenCards |= (1 << cardIdx); // Mark as seen
+        if(seenCards & (1UL << cardIdx)) continue; // Skip duplicates
+        seenCards |= (1UL << cardIdx); // Mark as seen
         bool enabled = cfg.cardEnabled[cardIdx];
         
         html += "<div class=\"gallery-card\" draggable=\"true\" data-idx=\"" + String(cardIdx) + "\" style=\"background:#fff;border:4px solid #000;padding:12px;cursor:grab;opacity:" + String(enabled ? "1" : "0.5") + "\">";
@@ -1351,6 +1353,16 @@ document.querySelectorAll('.logo-svg path,.logo-svg rect').forEach(function(el){
                 html += TR("Controls:", "Vadība:");
                 html += "</b> ";
                 html += TR("Tap to start/pause. Long touch (1.2s) to reset.", "Pieskarieties, lai sāktu/apturētu. Ilgs pieskāriens (1.2s), lai atiestatītu.");
+                html += "</p>";
+                break;
+            case 16: // Video
+                presetBtn(16, 0, "SHOW");
+                html += "</div><div style=\"margin-top:12px;padding-top:12px;border-top:2px dashed #ccc\">";
+                html += "<p style=\"font-size:0.85em;line-height:1.6;color:#333\">";
+                html += "<b>&#x1F3AC; ";
+                html += TR("Setup:", "Iestatīšana:");
+                html += "</b> ";
+                html += TR("Streams video sent from a computer over UDP port 4210 (20x7 RGB frames). Run tools/wt-stream.py &lt;youtube-url&gt; --host this-device.", "Rāda video, ko dators sūta pa UDP portu 4210 (20x7 RGB kadri). Palaidiet tools/wt-stream.py &lt;youtube-url&gt; --host šī-ierīce.");
                 html += "</p>";
                 break;
             default: // Single preset cards (Network, etc)
@@ -3391,7 +3403,7 @@ static void handleCardsConfigPost()
         // Expected format: "0,1,2,3,..."
         int start = 0;
         int idx = 0;
-        while (start < (int)orderStr.length() && idx < 16) {
+        while (start < (int)orderStr.length() && idx < WT_CARD_SLOTS) {
             int comma = orderStr.indexOf(',', start);
             if (comma == -1) comma = orderStr.length();
             
@@ -3403,15 +3415,15 @@ static void handleCardsConfigPost()
         }
     }
     
-    // 2. Update Enabled States (16 cards: 0-15)
-    for(int i=0; i<16; ++i) {
+    // 2. Update Enabled States
+    for(int i=0; i<WT_CARD_SLOTS; ++i) {
         String key = "en_" + String(i);
         cfg.cardEnabled[i] = server.hasArg(key);
     }
     
     // 2b. Update Per-Preset Enabled States
     // Reset all presets to disabled first, then enable checked ones
-    for(int card=0; card<16; ++card) {
+    for(int card=0; card<WT_CARD_SLOTS; ++card) {
         cfg.presetEnabled[card] = 0;
     }
     // Process preset checkboxes (format: p{card}_{preset})
@@ -3421,7 +3433,7 @@ static void handleCardsConfigPost()
             int underscore = name.indexOf('_');
             int card = name.substring(1, underscore).toInt();
             int preset = name.substring(underscore + 1).toInt();
-            if (card >= 0 && card < 16 && preset >= 0 && preset < 64) {
+            if (card >= 0 && card < WT_CARD_SLOTS && preset >= 0 && preset < 64) {
                 cfg.presetEnabled[card] |= (1ULL << preset);
             }
         }

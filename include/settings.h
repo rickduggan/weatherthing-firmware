@@ -18,6 +18,9 @@ enum ColorPalette : uint8_t
 };
 
 // Global settings structure
+// Number of card slots (0-15 original, 16 = Video)
+#define WT_CARD_SLOTS 17
+
 struct Settings
 {
     // Animation
@@ -110,13 +113,13 @@ struct Settings
     uint8_t rssFormat;       // 0=Title only, 1=Title + Description
     
     // Card Cycle Settings
-    bool cardEnabled[16];     // Enabled/Disabled state for each card (expanded for social)
-    uint8_t cardOrder[16];    // Display order (indices)
+    bool cardEnabled[WT_CARD_SLOTS];     // Enabled/Disabled state for each card (expanded for social)
+    uint8_t cardOrder[WT_CARD_SLOTS];    // Display order (indices)
     uint16_t cycleDuration;   // Seconds per card (0 = manual only)
     bool cycleEnabled;        // Enable auto cycling
     
     // Per-preset rotation settings (bitmask per card type, bit=1 means included in rotation)
-    uint64_t presetEnabled[16]; // Up to 64 presets per card type (expanded for social cards)
+    uint64_t presetEnabled[WT_CARD_SLOTS]; // Up to 64 presets per card type (expanded for social cards)
     
     // Social Media Settings
     char ytChannelId[32];        // YouTube Channel ID
