@@ -2189,6 +2189,7 @@ void cards_loop()
     // Update brightness with settings
     Settings& cfg = settings_get();
     wt_update_brightness_auto(cfg.brightMin, cfg.brightMax, cfg.brightMode, cfg.brightManual, cfg.brightBlanking, cfg.brightBlankSecs);
+    wt_set_white_balance(cfg.wbRed, cfg.wbGreen, cfg.wbBlue);
 
     // Boot animation takes priority
     if (!g_bootDone)

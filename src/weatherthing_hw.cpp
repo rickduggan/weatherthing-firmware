@@ -336,13 +336,51 @@ void wt_timeline_set_pixel(uint8_t index, uint32_t color)
     timelineStrip.setPixelColor(index, color);
 }
 
+static uint8_t g_wbR = 255, g_wbG = 255, g_wbB = 255;
+
+void wt_set_white_balance(uint8_t r, uint8_t g, uint8_t b)
+{
+    g_wbR = r;
+    g_wbG = g;
+    g_wbB = b;
+}
+
+// Scale the raw GRB buffer in place for output. Cards read pixels back
+// (beat pulses, glows), so the caller restores the uncorrected buffer after show.
+static void applyWhiteBalance(uint8_t* px, uint16_t count)
+{
+    for (uint16_t i = 0; i < count; ++i, px += 3)
+    {
+        px[0] = (uint16_t)px[0] * g_wbG / 255;  // NEO_GRB byte order
+        px[1] = (uint16_t)px[1] * g_wbR / 255;
+        px[2] = (uint16_t)px[2] * g_wbB / 255;
+    }
+}
+
 void wt_leds_show()
 {
+    static uint8_t matrixSaved[WT_MATRIX_PIXELS * 3];
+    static uint8_t timelineSaved[WT_TIMELINE_PIXELS * 3];
+    bool wb = (g_wbR != 255 || g_wbG != 255 || g_wbB != 255);
+    if (wb)
+    {
+        memcpy(matrixSaved, matrixStrip.getPixels(), sizeof(matrixSaved));
+        memcpy(timelineSaved, timelineStrip.getPixels(), sizeof(timelineSaved));
+        applyWhiteBalance(matrixStrip.getPixels(), WT_MATRIX_PIXELS);
+        applyWhiteBalance(timelineStrip.getPixels(), WT_TIMELINE_PIXELS);
+    }
+
     matrixStrip.show();
     fixGpioMatrix(WT_MATRIX_PIN);
     delayMicroseconds(100);
     timelineStrip.show();
     fixGpioMatrix(WT_TIMELINE_PIN);
+
+    if (wb)
+    {
+        memcpy(matrixStrip.getPixels(), matrixSaved, sizeof(matrixSaved));
+        memcpy(timelineStrip.getPixels(), timelineSaved, sizeof(timelineSaved));
+    }
 }
 
 void wt_set_brightness(uint8_t brightness)
