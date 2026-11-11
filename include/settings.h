@@ -17,6 +17,9 @@ enum ColorPalette : uint8_t
     PALETTE_COUNT = 8
 };
 
+// RSS-only palette choice: draw all text in Settings::rssColor
+static const uint8_t RSS_PALETTE_SOLID = PALETTE_COUNT;
+
 // Global settings structure
 struct Settings
 {
@@ -103,7 +106,8 @@ struct Settings
     
     // RSS Settings
     char rssUrl[128];        // RSS Feed URL
-    uint8_t rssPalette;      // Color palette for RSS
+    uint8_t rssPalette;      // Color palette for RSS (RSS_PALETTE_SOLID = single color)
+    uint32_t rssColor;       // Solid text color (used when rssPalette == RSS_PALETTE_SOLID)
     uint8_t rssSpeed;        // Scroll speed (1-10)
     uint8_t rssUpdateMins;   // Update interval
     uint8_t rssItemCount;    // Number of items to fetch (1-10)

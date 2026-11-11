@@ -11278,7 +11278,9 @@ static void rss_render() {
     for(int i=0; i<len; ++i) {
         int16_t x = g_rssScrollX + i * 5; // 4 pixels wide + 1 space
         if (x > -5 && x < WT_MATRIX_WIDTH) {
-            uint32_t charCol = settings_palette_color(cfg.rssPalette, (i * 10) % 255);
+            uint32_t charCol = (cfg.rssPalette == RSS_PALETTE_SOLID)
+                ? cfg.rssColor
+                : settings_palette_color(cfg.rssPalette, (i * 10) % 255);
             const uint8_t* bitmap = getCharBitmap((uint8_t)title[i]);
             // Full height 4x7 font: row 0 = top, row 6 = bottom
             for(int r=0; r<7; ++r) {
@@ -11291,7 +11293,9 @@ static void rss_render() {
         }
     }
     for (uint8_t i = 0; i < WT_TIMELINE_PIXELS; ++i) {
-        wt_timeline_set_pixel(i, settings_palette_color(cfg.rssPalette, i * 20));
+        wt_timeline_set_pixel(i, (cfg.rssPalette == RSS_PALETTE_SOLID)
+            ? cfg.rssColor
+            : settings_palette_color(cfg.rssPalette, i * 20));
     }
 }
 
